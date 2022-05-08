@@ -29,7 +29,7 @@ function latitudeLines(ctx, height) {
 function iss(width, height, center, ctx, issImg) {
 
     var request = new XMLHttpRequest();
-    request.open('GET', 'http://api.open-notify.org/iss-now.json', true);
+    request.open('GET', "https://api.wheretheiss.at/v1/satellites/25544", true);
 
     request.onload = function() {
 
@@ -37,8 +37,8 @@ function iss(width, height, center, ctx, issImg) {
 
             var data = JSON.parse(this.response);
 
-            var lat = data['iss_position']['latitude'];
-            var lon = data['iss_position']['longitude'];
+            var lat = data['latitude'];
+            var lon = data['longitude'];
 
             var width360 = width/360;
             var height180 = height/180;
