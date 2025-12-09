@@ -1,100 +1,76 @@
-const interval = 1500; //milliseconds
+const interval = 1500; // milliseconds
 const lineWidth = 0.1;
 const strokeStyle = "#333";
+const apiURL = "https://api.wheretheiss.at/v1/satellites/25544";
 
-function longitudeLines(ctx, width) {
-    var yAxis = width/2;
+function drawLines(ctx, count, length, horizontal = false) {
     ctx.strokeStyle = strokeStyle;
     ctx.lineWidth = lineWidth;
-    ctx.beginPath();
-    for (var xAxis = 0; xAxis <= width; xAxis = xAxis+width/24) {
-        ctx.moveTo(xAxis, 0);
-        ctx.lineTo(xAxis, yAxis);
+
+    const step = length / count;
+
+    for (let i = 0; i <= count; i++) {
+        const pos = i * step;
+
+        ctx.beginPath();
+        if (horizontal) {
+            ctx.moveTo(0, pos);
+            ctx.lineTo(length * 2, pos);
+        } else {
+            ctx.moveTo(pos, 0);
+            ctx.lineTo(pos, length / 2);
+        }
         ctx.stroke();
     }
 }
 
-function latitudeLines(ctx, height) {
-    var xAxis = height*2;
-    ctx.strokeStyle = strokeStyle;
-    ctx.lineWidth = lineWidth;
-    ctx.beginPath();
-    for (var yAxis = 0; yAxis <= height; yAxis = yAxis+height/12) {
-        ctx.moveTo(0, yAxis);
-        ctx.lineTo(xAxis, yAxis);
-        ctx.stroke();
-    }
-}
+function drawISS(width, height, center, ctx, issImg) {
+    fetch(apiURL)
+        .then(res => res.json())
+        .then(data => {
+            const { latitude: lat, longitude: lon } = data;
 
-function iss(width, height, center, ctx, issImg) {
-
-    var request = new XMLHttpRequest();
-    request.open('GET', "https://api.wheretheiss.at/v1/satellites/25544", true);
-
-    request.onload = function() {
-
-        if (request.status == 200) {
-
-            var data = JSON.parse(this.response);
-
-            var lat = data['latitude'];
-            var lon = data['longitude'];
-
-            var width360 = width/360;
-            var height180 = height/180;
-
-            var xAxis = center[0] + lon * width360;
-            var yAxis = center[1] - lat * height180;
+            const x = center[0] + (lon * (width / 360));
+            const y = center[1] - (lat * (height / 180));
 
             ctx.clearRect(0, 0, width, height);
+
             ctx.beginPath();
-            ctx.arc(xAxis, yAxis, 25, 0, 2 * Math.PI);
-            ctx.drawImage(issImg, xAxis - 25, yAxis - 20, 52, 40);
+            ctx.arc(x, y, 25, 0, Math.PI * 2);
             ctx.strokeStyle = "red";
             ctx.stroke();
 
-        } else {
-
-            console.log("Error: Status code is not 200.");
-
-        }
-    }
-
-    request.send();
-
+            ctx.drawImage(issImg, x - 25, y - 20, 52, 40);
+        })
+        .catch(() => console.log("Erro ao obter dados da ISS."));
 }
 
-window.onload = function() {
-    
-    var mapLayer = document.getElementById('map-layer');
-    var issLayer = document.getElementById('iss-layer');
-    var mapCtx = mapLayer.getContext('2d');
-    var issCtx = issLayer.getContext('2d');
+window.onload = function () {
+    const mapLayer = document.getElementById("map-layer");
+    const issLayer = document.getElementById("iss-layer");
 
-    var width = mapLayer.width;
-    var height = mapLayer.height;
+    const mapCtx = mapLayer.getContext("2d");
+    const issCtx = issLayer.getContext("2d");
 
-    var center = [width/2, height/2];
+    const width = mapLayer.width;
+    const height = mapLayer.height;
+    const center = [width / 2, height / 2];
 
-    var bgImg = new Image();
+    const bgImg = new Image();
+    bgImg.src = "assets/images/earthmap.jpg";
 
-    bgImg.src = 'assets/images/earthmap.jpg';
-
-    bgImg.onload = function() {
-
+    bgImg.onload = function () {
         mapCtx.drawImage(bgImg, 0, 0, width, height);
 
-        longitudeLines(mapCtx, width);
-        latitudeLines(mapCtx, height);
+        drawLines(mapCtx, 24, width);         // longitudes
+        drawLines(mapCtx, 12, height, true);  // latitudes
 
-        var issImg = new Image();
-        issImg.src = 'assets/images/iss.png';
+        const issImg = new Image();
+        issImg.src = "assets/images/iss.png";
 
-        issImg.onload = function() {
-            iss(width, height, center, issCtx, issImg);
-            setInterval(iss, interval, width, height, center, issCtx, issImg);
-        }
-
-    }
-
+        issImg.onload = function () {
+            drawISS(width, height, center, issCtx, issImg);
+            setInterval(() => drawISS(width, height, center, issCtx, issImg), interval);
+        };
+    };
 };
